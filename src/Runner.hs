@@ -115,6 +115,10 @@ runModule fastMode repl (Module module_ setup examples) = do
   forM_ setup $
     runTestGroup repl reload
 
+  -- load module. If we have fastMode, then it's not loaded by 'reload'
+  when fastMode $ liftIO $
+    void $ Interpreter.safeEval repl $ ":m *" ++ module_
+
   Summary _ _ e1 f1 <- gets reportStateSummary
 
   -- only run tests, if setup does not produce any errors/failures
@@ -124,12 +128,12 @@ runModule fastMode repl (Module module_ setup examples) = do
   where
     reload :: IO ()
     reload = do
-      unless fastMode $
+      unless fastMode $ do
         -- NOTE: It is important to do the :reload first! See
         -- https://ghc.haskell.org/trac/ghc/ticket/5904, which results in a
         -- panic on GHC 7.4.1 if you do the :reload second.
         void $ Interpreter.safeEval repl ":reload"
-      void $ Interpreter.safeEval repl $ ":m *" ++ module_
+        void $ Interpreter.safeEval repl $ ":m *" ++ module_
 
       -- Evaluate a dumb expression to populate the 'it' variable NOTE: This is
       -- one reason why we cannot have safeEval = safeEvalIt: 'it' isn't set in
